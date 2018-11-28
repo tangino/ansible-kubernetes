@@ -1,0 +1,16 @@
+---
+# handlers file for kubernetes
+- name: start docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: start kubelet
+  systemd:
+    name: kubelet
+    state: started
+    enabled: yes
+
+- name: make sysctl work
+  shell: "sysctl --system"

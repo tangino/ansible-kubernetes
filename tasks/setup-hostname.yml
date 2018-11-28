@@ -1,0 +1,4 @@
+- name: change hostname
+  shell: "hostnamectl set-hostname {{ master1_hostname }} "
+  args:
+    warn: no

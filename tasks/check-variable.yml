@@ -1,0 +1,3 @@
+- fail: msg="to run this play,you need to pass variables 'vip'"
+  when:
+    - vip is not defined

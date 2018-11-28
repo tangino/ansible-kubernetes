@@ -1,0 +1,39 @@
+# tasks file for kubernetes
+#
+#
+- name: set hostname
+  import_tasks: setup-hostname.yml
+
+- name: install docker for CentOS
+  import_tasks: install-centos-docker.yml
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "7"
+
+- name: install kubernetes tools kubeadm kubectl kubelet for CentOS
+  import_tasks: install-centos-k8s-tools.yml
+  when:
+    - ansible_distribution == "CentOS"
+    - ansible_distribution_major_version == "7"
+
+- name: install docker for Ubuntu
+  import_tasks: install-ubuntu-docker.yml
+  when:
+    - ansible_distribution == "Ubuntu"
+
+- name: install kubernetes tools kubeadm kubectl kubelet for Ubuntu
+  import_tasks: install-ubuntu-k8s-tools.yml
+  when:
+    - ansible_distribution == "Ubuntu"
+
+- name: pull necessary kubernetes images
+  import_tasks: pull-k8s-images.yml
+
+- name: install keepalived
+  import_tasks: install-keepalived.yml
+
+- name: execute kubeadm init
+  import_tasks: kubeadm-init.yml
+
+- name: join cluster
+  import_tasks: kubeadm-join.yml

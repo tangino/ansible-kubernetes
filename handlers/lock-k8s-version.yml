@@ -1,0 +1,3 @@
+- name: lock k8s tools version
+  shell: "yum versionlock add kubeadm kubectl kubelet"
+  listen: install kubernetes tools for CentOS

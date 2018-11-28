@@ -1,0 +1,6 @@
+- name: configurate centos sysctl
+  copy:
+    src: sysctl_k8s.conf
+    dest: /etc/sysctl.d/
+  notify:
+    - make sysctl work

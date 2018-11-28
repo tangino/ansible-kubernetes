@@ -1,0 +1,34 @@
+- name: upgrade all packages for CentOS
+  yum:
+    name: '*'
+    state: latest
+
+- name: install necessary packages for CentOS
+  yum:
+    name:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+      - yum-plugin-versionlock
+
+- name: add docker repository for CentOS
+  copy:
+    src: docker-ce.repo
+    dest: /etc/yum.repos.d/
+
+- name: install docker for CentOS
+  yum:
+    name: docker-ce-18.06.0.ce-3.el7.x86_64
+    state: present
+
+- name: start docker daemon
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: lock docker version for CentOS
+  shell: "yum versionlock add docker-ce"
+  args:
+    warn: no
+

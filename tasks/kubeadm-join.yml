@@ -1,0 +1,5 @@
+- name: slave node join kubernetes cluster
+  debug: msg="{{ kubernetes_join_command.stdout }}"
+  when: kubernetes_join_command is defined
+  tags:
+    - join

@@ -1,0 +1,41 @@
+- name: swapoff
+  shell: "swapoff -a"
+
+- name: generate kubeadm configuration file
+  template:
+    src: kubeadm-config.yml.j2
+    dest: /tmp/kubeadm-config.yml
+
+- name: run kubeadm init
+  shell: "kubeadm init --config /tmp/kubeadm-config.yml"
+
+- name: create kubernetes user
+  user:
+    name: kubernetes
+    state: present
+
+- name: create .kube directory
+  file:
+    path: /home/kubernetes/.kube/
+    owner: kubernetes
+    state: directory
+
+- name: setup kubernetes context
+  copy:
+    remote_src: true
+    src: /etc/kubernetes/admin.conf
+    dest: /home/kubernetes/.kube/config
+    owner: kubernetes
+
+- name: generate join token
+  shell: "kubeadm token create --print-join-command 2>/dev/null"
+  register: result  
+
+- name: running set fact
+  set_fact:
+    kubernetes_join_command: "{{ result }}"
+
+- name: print fact
+  debug: msg="{{ kubernetes_join_command.stdout }}"
+  
+  

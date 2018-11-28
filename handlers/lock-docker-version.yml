@@ -1,0 +1,7 @@
+- name: lock docker version for CentOS
+  shell: "yum versionlock add docker-ce"
+  listen: install docker for CentOS
+
+- name: lock docker version for Ubuntu
+  shell: "apt-mark hold docker-ce"
+  listen: install docker for Ubuntu

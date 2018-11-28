@@ -1,0 +1,42 @@
+- name: add kubernetes repository for CentOS
+  copy:
+    src: kubernetes.repo
+    dest: /etc/yum.repos.d/
+
+- name: import gpg key
+  rpm_key:
+    key: https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg 
+    state: present
+
+- name: import gpg key 2
+  rpm_key:
+    key: https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+    state: present
+
+- name: copy sysctl configurate file
+  copy:
+    src: sysctl_k8s.conf
+    dest: /etc/sysctl.d/
+
+- name: run sysctl
+  shell: "sysctl --system"
+
+- name: install kubernetes tools for CentOS
+  yum:
+    name:
+      - kubeadm 
+      - kubectl
+      - kubelet
+    state: present
+
+- name: lock k8s version
+  shell: "yum versionlock add kubeadm kubelet kubectl"
+  args:
+    warn: no
+
+- name: start kubelet
+  systemd:
+    name: kubelet
+    state: started
+    enabled: yes
+

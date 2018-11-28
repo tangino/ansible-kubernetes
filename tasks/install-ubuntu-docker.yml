@@ -1,0 +1,29 @@
+- name: update system packages Ubuntu
+  apt: 
+    name: '*'
+    state: latest
+
+- name: install nessary packages Ubuntu
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+
+- name: import apt key 
+  apt_key: 
+    url: http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg
+    state: present
+
+- name: add docker repository for Ubuntu
+  shell: "add-apt-repository 'deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable'"
+  when: ansible_userspace_architecture == "x86_64"
+
+- name: install docker for Ubuntu
+  apt:
+    name: docker-ce=18.06.0~ce~3-0~ubuntu
+    state: present
+
+- name: lock docker version
+  shell: "apt-mark hold docker-ce"

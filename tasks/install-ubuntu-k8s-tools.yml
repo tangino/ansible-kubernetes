@@ -1,0 +1,20 @@
+- name: import gpg key
+  apt_key: 
+    url: https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg
+    state: present
+
+- name: add kubernetes repository for Ubuntu
+  copy:
+    src: kubernetes.list
+    dest: /etc/apt/sources.list.d/
+
+- name: install kubernetes tools for Ubuntu
+  apt:
+    name:
+      - kubeadm 
+      - kubectl
+      - kubelet
+    state: present
+
+- name: lock k8s version
+  shell: "apt-mark hold kubeadm kubelet kubectl"

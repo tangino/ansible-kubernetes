@@ -1,0 +1,8 @@
+---
+# defaults file for kubernetes
+pull_image_script: pull_k8s_image.sh
+install_ubuntu_docker: install docker for Ubuntu
+install_centos_docker: install docker for Centos
+install_ubuntu_tools:  install kubernetes tools for Ubuntu
+install_centos_tools:  install kubernetes tools for CentOS
+
