@@ -17,7 +17,7 @@
     state: present
 
 - name: add docker repository for Ubuntu
-  shell: "add-apt-repository 'deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable'"
+  shell: add-apt-repository "deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
   when: ansible_userspace_architecture == "x86_64"
 
 - name: install docker for Ubuntu

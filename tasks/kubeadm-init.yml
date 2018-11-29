@@ -27,6 +27,12 @@
     dest: /home/kubernetes/.kube/config
     owner: kubernetes
 
+- name: apply network resource
+  shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  become: yes
+  become_method: sudo
+  become_user: kubernetes
+
 - name: generate join token
   shell: "kubeadm token create --print-join-command 2>/dev/null"
   register: result  
