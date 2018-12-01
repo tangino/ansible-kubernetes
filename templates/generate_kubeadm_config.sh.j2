@@ -1,0 +1,92 @@
+#!/bin/bash
+
+CLUSTER_IP={{ vip }}
+
+IPS=(
+{% for host in ansible_play_batch %}
+	{% if host | ipaddr %}
+  {{host}} 
+	{% endif %}
+{% endfor %}
+)
+
+for i in ${!IPS[@]}; do
+	res=$(host ${IPS[$i]})
+	if [ "${res}" != 0 ];then #无法通过ip地址取得主机名,则以ip作为主机名
+		host_name[$i]=${IPS[$i]}
+	else   # 获取主机名
+		host_name[$i]=$(host ${IPS[$i]} | sed '2d' | awk '{FS=" "; print $NF}' | tr . " ")
+	fi
+done
+
+NAMES=(
+{% for host in ansible_play_batch %}
+	{% if not host | ipaddr %}
+  {{host}} 
+	{% endif %}
+{% endfor %}
+)
+
+for i in ${!NAMES[@]}; do
+		# 解析主机名对应的ip地址
+		host_ip[$i]=$(ping -4n -c 1 ${NAMES[$i]} | sed -n '2p' | awk '{FS=" "; print $4}' | tr : " ")
+done
+
+
+ALL_IPS=(${IPS[@]} ${host_ip[@]}) #所有主机的ip地址
+ALL_HOSTS=(${host_name[@]} ${NAMES[@]})  #所有主机的主机名,可能有些主机无法查找主机名，则主机名是ip地址
+
+# 如果没有指定主机，则第一台被遍历的主机会被执行kubeadm-init
+{%if not master1 %}
+master1=${ALL_HOSTS[0]}
+{% else %}
+master1={{master1}}
+{% endif %}
+
+for i in "${!ALL_IPS[@]}"; do
+	if [ ${master1} = ${ALL_HOSTS[$i]} ];then
+		INITIAL_CLUSTER=$(
+			echo "${master1}=https://${ALL_IPS[$i]}:2380"
+		)
+	else
+		INITIAL_CLUSTER=$(
+			for j in "${!ALL_HOSTS[@]}"; do
+			  echo "${ALL_HOSTS[$j]}=https://${ALL_IPS[$j]}:2380"
+			done | xargs | tr ' ' ,
+		  )
+	fi
+
+	if [ ${master1} != ${ALL_HOSTS[$i]} ]; then
+		initial_cluster_status="initial-cluster-status: existing"
+	else
+		unset initial_cluster_status
+	fi
+cat > /tmp/kubeadm-config-${ALL_HOSTS[$i]}.yaml <<EOT
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: ClusterConfiguration
+kubernetesVersion: {{kubernetes_version}}
+apiServerCertSANs:
+- "${CLUSTER_IP}"
+controlPlaneEndpoint: "${CLUSTER_IP}:6443"
+etcd:
+  local:
+    extraArgs:
+      name: "${ALL_HOSTS[$i]}"
+      listen-client-urls: "https://127.0.0.1:2379,https://${ALL_IPS[$i]}:2379"
+      advertise-client-urls: "https://${ALL_IPS[$i]}:2379"
+      listen-peer-urls: "https://${ALL_IPS[$i]}:2380"
+      initial-advertise-peer-urls: "https://${ALL_IPS[$i]}:2380"
+      initial-cluster: "${INITIAL_CLUSTER}"
+      ${initial_cluster_status}
+serverCertSANs:
+  - ${ALL_HOSTS[$i]}
+  - ${ALL_IPS[$i]}
+peerCertSANs:
+  - ${ALL_HOSTS[$i]}
+  - ${ALL_IPS[$i]}
+networking:
+  podSubnet: "{{pod_subnet}}"
+EOT
+done
+
+echo ${tempdir}

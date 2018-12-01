@@ -10,6 +10,7 @@
       - device-mapper-persistent-data
       - lvm2
       - yum-plugin-versionlock
+      - bind-utils
 
 - name: add docker repository for CentOS
   copy:

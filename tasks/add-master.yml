@@ -1,0 +1,12 @@
+- name: copy certificate to other hosts
+  tags:
+    - cert
+  local_action: shell if [ "{{ item }}" -neq "{{ master1 }}" ];then \
+                        mkdir -p /etc/kubernetes/pki/etcd/ \
+                        scp root@"{{ master1 }}":/etc/kubernetes/pki/ca.* root@"{{ item }}":/etc/kubernetes/pki/ \
+                        scp root@"{{ master1 }}":/etc/kubernetes/pki/sa.* root@"{{ item }}":/etc/kubernetes/pki/ \
+                        scp root@"{{ master1 }}":/etc/kubernetes/pki/front-proxy-ca.* root@"{{ item }}":/etc/kubernetes/pki/ \
+                        scp root@"{{ master1 }}":/etc/kubernetes/pki/etcd/ca.* root@"{{ item }}":/etc/kubernetes/pki/etcd/ \
+                        scp root@"{{ master1 }}":/etc/kubernetes/pki/admin.conf root@"{{ item }}":/etc/kubernetes/pki/
+                     fi
+  loop: "{{ ansible_play_batch }}"

@@ -35,5 +35,8 @@
 - name: execute kubeadm init
   import_tasks: kubeadm-init.yml
 
+- name: add another master
+  import_tasks: add-master.yml
+
 - name: join cluster
   import_tasks: kubeadm-join.yml

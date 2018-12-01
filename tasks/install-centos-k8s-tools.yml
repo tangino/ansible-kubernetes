@@ -3,14 +3,14 @@
     src: kubernetes.repo
     dest: /etc/yum.repos.d/
 
-- name: import gpg key
+- name: import yum key
   rpm_key:
     key: https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg 
     state: present
 
-- name: import gpg key 2
+- name: import rpm key 
   rpm_key:
-    key: https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+    key: https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
     state: present
 
 - name: copy sysctl configurate file
