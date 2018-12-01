@@ -1,42 +1,47 @@
-- name: add kubernetes repository for CentOS
+- name: 添加kubeadm仓库 (CentOS)
   copy:
     src: kubernetes.repo
     dest: /etc/yum.repos.d/
+  tags:
+    - add-kubeadm-repo-centos
 
-- name: import yum key
+- name: 导入yum key (CentOS)
   rpm_key:
     key: https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg 
     state: present
+  tags:
+    - k8s
 
-- name: import rpm key 
+- name: 导入rpm key (CentOS)
   rpm_key:
     key: https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
     state: present
+  tags:
+    - k8s
 
-- name: copy sysctl configurate file
-  copy:
-    src: sysctl_k8s.conf
-    dest: /etc/sysctl.d/
-
-- name: run sysctl
-  shell: "sysctl --system"
-
-- name: install kubernetes tools for CentOS
+- name: 安装kubeadm kubectl kubelet (CentOS)
   yum:
     name:
       - kubeadm 
       - kubectl
       - kubelet
     state: present
+  tags:
+    - install-kubeadm-centos
+    - k8s
 
-- name: lock k8s version
+- name: 锁定kubeadm kubectl kubelet版本 (CentOS)
   shell: "yum versionlock add kubeadm kubelet kubectl"
   args:
     warn: no
+  tags:
+    - k8s
 
-- name: start kubelet
+- name: 启动kubelet
   systemd:
     name: kubelet
     state: started
     enabled: yes
-
+  tags:
+    - start-kubelet
+    - k8s

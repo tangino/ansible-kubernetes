@@ -1,17 +1,3 @@
-- name: 关闭交换分区
-  shell: "swapoff -a"
-
-- name:  禁用SeLinux
-  shell: "setenforce 0"
-
-- name: 禁用firewalld
-  systemd:
-    name: firewalld
-    state: stopped
-    enabled: no
-  when:
-    - ansible_distribution == "CentOS"
-
 - name: 准备kubeadm配置脚本
   template:
     src: generate_kubeadm_config.sh.j2
@@ -19,12 +5,14 @@
   delegate_to: localhost
   tags:
     - prepare-config-script
+    - kubeadm-init
 
 - name: 创建kubeadm集群配置文件
   shell: /bin/bash /tmp/generate_kubeadm_config.sh
   delegate_to: localhost
   tags:
     - create-config
+    - kubeadm-init
 
 - name: 执行kubeadm init命令
   shell: kubeadm init --config "{{ temp_dir }}"/kubeadm-config-$(hostname).yaml
@@ -33,12 +21,16 @@
   user:
     name: kubernetes
     state: present
+  tags:
+    - kubeadm-init
 
 - name: 创建kubeadm context配置文件夹
   file:
     path: /home/kubernetes/.kube/
     owner: kubernetes
     state: directory
+  tags:
+    - kubeadm-init
 
 - name: 保存kubeadm context配置文件
   copy:
@@ -46,22 +38,30 @@
     src: /etc/kubernetes/admin.conf
     dest: /home/kubernetes/.kube/config
     owner: kubernetes
+  tags:
+    - kubeadm-init
 
 - name: 创建网络资源
   shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
   become: yes
   become_method: sudo
   become_user: kubernetes
+  tags:
+    - kubeadm-init
 
 - name: 生成加入集群的命令(kubeadm join)
   shell: "kubeadm token create --print-join-command 2>/dev/null"
   register: result  
+  tags:
+    - kubeadm-init
 
 - name: running set fact
   set_fact:
     kubernetes_join_command: "{{ result }}"
+  tags:
+    - kubeadm-init
 
 - name: print fact
   debug: msg="{{ kubernetes_join_command.stdout }}"
-  
-  
+  tags:
+    - kubeadm-init

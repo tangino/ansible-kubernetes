@@ -1,0 +1,32 @@
+- name: 关闭交换分区
+  shell: "swapoff -a"
+  tags:
+    - configurate-system
+
+- name:  禁用SELinux
+  shell: "setenforce 0"
+  when: ansible_distribution == "CentOS"
+  tags:
+    - configurate-system
+
+- name: 禁用firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when:
+    - ansible_distribution == "CentOS"
+  tags:
+    - configurate-system
+
+- name: 复制sysctl配置文件 (CentOS)
+  copy:
+    src: sysctl_k8s.conf
+    dest: /etc/sysctl.d/
+  tags:
+    - configurate-system
+
+- name: 执行sysctl命令 (CentOS)
+  shell: "sysctl --system"
+  tags:
+    - configurate-system

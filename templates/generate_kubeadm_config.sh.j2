@@ -61,7 +61,7 @@ for i in "${!ALL_IPS[@]}"; do
 cat > /tmp/kubeadm-config-${ALL_HOSTS[$i]}.yaml <<EOT
 apiVersion: kubeadm.k8s.io/v1alpha3
 kind: ClusterConfiguration
-kubernetesVersion: {{kubernetes_version}}
+kubernetesVersion: {{kubernetes_version | default(stable)}}
 apiServerCertSANs:
 - "${CLUSTER_IP}"
 controlPlaneEndpoint: "${CLUSTER_IP}:6443"

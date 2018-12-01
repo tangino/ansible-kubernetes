@@ -1,25 +1,37 @@
-- name: install keepalived the load balancer for CentOS
+- name: 安装keepalived (CentOS)
   yum:
     name: keepalived
     state: present
   when:
     - ansible_distribution == "CentOS"
     - ansible_distribution_major_version == "7"
+  tags:
+    - install-keepalived-centos
+    - keepalived
     
-- name: install keepalived the load balancer for Ubuntu
+- name: 安装keepalived (Ubuntu)
   apt:
     name: keepalived
     state: present
   when:
     - ansible_distribution == "Ubuntu"
+  tags:
+    - install-keepalived-ubuntu
+    - keepalived
 
-- name: configurate keepalived
+- name: 配置keepalived
   template:
     src: keepalived.conf.j2
     dest: /etc/keepalived/keepalived.conf
+  tags:
+    - configurate-keepalived
+    - keepalived
 
-- name: start keeplaived
+- name: 启动keeplaived
   systemd:
     name: keepalived
     state: started
     enabled: yes
+  tags:
+    - start-keepalived
+    - keepalived

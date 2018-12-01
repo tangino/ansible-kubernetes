@@ -1,9 +1,11 @@
-- name: upgrade all packages for CentOS
+- name: 升级系统软件包 (CentOS)
   yum:
     name: '*'
     state: latest
+  tags:
+    - update
 
-- name: install necessary packages for CentOS
+- name: 安装必须的软件包 (CentOS)
   yum:
     name:
       - yum-utils
@@ -11,25 +13,39 @@
       - lvm2
       - yum-plugin-versionlock
       - bind-utils
+  tags:
+    - docker
 
-- name: add docker repository for CentOS
+- name: 添加Docker仓库 (CentOS)
   copy:
     src: docker-ce.repo
     dest: /etc/yum.repos.d/
+  tags:
+    - add-docker-repo-centos
+    - docker
 
-- name: install docker for CentOS
+- name: 安装Docker-ce (CentOS)
   yum:
-    name: docker-ce-18.06.0.ce-3.el7.x86_64
+    name: docker-ce
     state: present
+  tags:
+    - install-docker-centos
+    - docker
 
-- name: start docker daemon
+- name: 启动Docker守护进程
   systemd:
     name: docker
     state: started
     enabled: yes
+  tags:
+    - start-docker
+    - docker
 
-- name: lock docker version for CentOS
+- name: 锁定Docker-ce版本 (CentOS)
   shell: "yum versionlock add docker-ce"
   args:
     warn: no
+  tags:
+    - lock-docker-centos
+    - docker
 

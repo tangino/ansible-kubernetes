@@ -1,20 +1,28 @@
-- name: import gpg key
+- name: 导入gpg key (Ubuntu)
   apt_key: 
     url: https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg
     state: present
+  tags:
+    - k8s
 
-- name: add kubernetes repository for Ubuntu
+- name: 添加kubeadm仓库 (Ubuntu)
   copy:
     src: kubernetes.list
     dest: /etc/apt/sources.list.d/
+  tags:
+    - k8s
 
-- name: install kubernetes tools for Ubuntu
+- name: 安装kubeadm kubectl kubelet (Ubuntu)
   apt:
     name:
       - kubeadm 
       - kubectl
       - kubelet
     state: present
+  tags:
+    - k8s
 
-- name: lock k8s version
+- name: 锁定kubeadm kubectl kubelet版本 (Ubuntu)
   shell: "apt-mark hold kubeadm kubelet kubectl"
+  tags:
+    - k8s

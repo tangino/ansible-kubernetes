@@ -1,29 +1,41 @@
-- name: update system packages Ubuntu
+- name: 更新系统软件包 (Ubuntu)
   apt: 
     name: '*'
     state: latest
+  tags:
+    - update
 
-- name: install nessary packages Ubuntu
+- name: 安装必须的软件包 (Ubuntu)
   apt:
     name:
       - apt-transport-https
       - ca-certificates
       - curl
       - software-properties-common
+  tags:
+    - docker
 
-- name: import apt key 
+- name: 导入apt key 
   apt_key: 
     url: http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg
     state: present
+  tags:
+    - docker
 
-- name: add docker repository for Ubuntu
+- name: 添加Docker仓库 (Ubuntu)
   shell: add-apt-repository "deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
   when: ansible_userspace_architecture == "x86_64"
+  tags:
+    - docker
 
-- name: install docker for Ubuntu
+- name: 安装Docker-ce (Ubuntu)
   apt:
-    name: docker-ce=18.06.0~ce~3-0~ubuntu
+    name: docker-ce
     state: present
+  tags:
+    - docker
 
-- name: lock docker version
+- name: 锁定Docker版本 (Ubuntu)
   shell: "apt-mark hold docker-ce"
+  tags:
+    - docker
