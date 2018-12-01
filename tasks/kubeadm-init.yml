@@ -16,6 +16,7 @@
   template:
     src: generate_kubeadm_config.sh.j2
     dest: /tmp/generate_kubeadm_config.sh
+  delegate_to: localhost
   tags:
     - prepare-config-script
 
