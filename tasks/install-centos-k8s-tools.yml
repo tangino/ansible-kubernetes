@@ -4,6 +4,7 @@
     dest: /etc/yum.repos.d/
   tags:
     - add-kubeadm-repo-centos
+    - k8s
 
 - name: 导入yum key (CentOS)
   rpm_key:

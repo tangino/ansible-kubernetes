@@ -1,30 +1,38 @@
 # tasks file for kubernetes
 #
 #
+#
+- name: 检查是否已经传入必须的变量
+  fail:
+    msg: "以下变量必须定义: vip_interface vip_cidr"
+  when: vip_interface is not defined or vip_cidr is not defined
+  tags:
+    - check-var
+
+- name: 定义变量
+  set_fact:
+    master1: "{{ master1 | default(ansible_play_batch[0]) }}"
+    network: "{{ network | default('Flannel')}}"
+    version: "{{ version | default('stable') }}"
+
 - name: 配置系统
   import_tasks: configurate-system.yml
 
 - name: 安装Docker-ce (CentOS)
   import_tasks: install-centos-docker.yml
-  when:
-    - ansible_distribution == "CentOS"
-    - ansible_distribution_major_version == "7"
+  when: ansible_pkg_mgr == 'yum'
 
 - name: 安装kubeadm kubectl kubelet (CentOS)
   import_tasks: install-centos-k8s-tools.yml
-  when:
-    - ansible_distribution == "CentOS"
-    - ansible_distribution_major_version == "7"
+  when: ansible_pkg_mgr == 'yum'
 
 - name: 安装Docker-ce (Ubuntu)
   import_tasks: install-ubuntu-docker.yml
-  when:
-    - ansible_distribution == "Ubuntu"
+  when: ansible_pkg_mgr == "apt"
 
 - name: 安装kubeadm kubectl kubelet (Ubuntu)
   import_tasks: install-ubuntu-k8s-tools.yml
-  when:
-    - ansible_distribution == "Ubuntu"
+  when: ansible_pkg_mgr == "apt"
 
 - name: 拉取相关Docker镜像
   import_tasks: pull-k8s-images.yml

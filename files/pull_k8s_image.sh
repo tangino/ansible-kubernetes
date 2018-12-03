@@ -17,16 +17,18 @@ function pullImage
 }
 
 if [ ! $1 ]; then
-	VERSION=1.12.0
+	VERSION=stable
 else
 	VERSION=$1
-	echo ${VERSION} >> /root/version.txt
 fi
 
-images=$(kubeadm config images list --kubernetes-version v${VERSION})
+echo ${VERSION} >> /tmp/version.txt
+
+images=$(kubeadm config images list --kubernetes-version ${VERSION})
 localimage=$(docker images | sed '1d' | awk '{print $1":"$2}')
 for image in ${images}
 do
+	echo ${image} >> /tmp/images.txt
 	if [ -n "${localimage[@]}" ]; then # 如果本地有镜像才进行比较
 		if ! echo "${localimage[@]}" | grep -w ${image}&>/dev/null; then
 			pullImage ${image}

@@ -1,6 +1,6 @@
 vrrp_instance VI_1 {
     state MASTER   
-    interface {{ keepalived_vip_interface }}  
+    interface {{ vip_interface }}  
     virtual_router_id 51
     priority 100  
     advert_int 1
@@ -9,6 +9,6 @@ vrrp_instance VI_1 {
         auth_pass 1111 
     }   
     virtual_ipaddress {
-        {{ keepalived_vip_cidr }}
+        {{ vip_cidr }}
     }   
 }

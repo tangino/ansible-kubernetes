@@ -4,7 +4,7 @@
     dest: /tmp/generate_kubeadm_config.sh
   delegate_to: localhost
   tags:
-    - prepare-config-script
+    - prepare-config
     - kubeadm-init
 
 - name: 创建kubeadm集群配置文件
@@ -14,21 +14,43 @@
     - create-config
     - kubeadm-init
 
+- name: 复制配置文件到远程主机
+  copy:
+    src: /tmp/kubeadm-config-{{item}}.yaml
+    dest: /tmp/kubeadm-config-{{item}}.yaml
+  loop: "{{ansible_play_batch}}"
+  delegate_to: localhost
+  run_once: yes
+  tags:
+    - kubeadm-init
+
 - name: 执行kubeadm init命令
-  shell: kubeadm init --config "{{ temp_dir }}"/kubeadm-config-$(hostname).yaml
+  shell: kubeadm init --config /tmp/kubeadm-config-{{master1}}.yaml --ignore-preflight-errors=all
+  run_once: yes
+  delegate_to: "{{master1}}"
+  register: result
+  tags:
+    - kubeadm-init
 
 - name: 创建kubeadm管理用户(没有密码)
   user:
     name: kubernetes
     state: present
+  run_once: yes
+  delegate_to: "{{master1}}"
+  when: result.rc == 0
   tags:
     - kubeadm-init
 
 - name: 创建kubeadm context配置文件夹
-  file:
-    path: /home/kubernetes/.kube/
-    owner: kubernetes
-    state: directory
+  shell: |
+    mkdir -p /home/kubernetes/.kube/ && chown kubernetes:kubernetes /home/kubernetes/ -R
+  args:
+    warn: no
+  run_once: yes
+  delegate_to: "{{master1}}"
+  register: success
+  when: result.rc == 0
   tags:
     - kubeadm-init
 
@@ -38,30 +60,47 @@
     src: /etc/kubernetes/admin.conf
     dest: /home/kubernetes/.kube/config
     owner: kubernetes
+  run_once: yes
+  delegate_to: "{{master1}}"
+  when: success.rc == 0
   tags:
     - kubeadm-init
 
 - name: 创建网络资源
-  shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  shell: |
+    {% if network| lower == 'flannel' %}
+    kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+    {% elif network| lower == 'canal' %}
+    kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/canal/rbac.yaml
+    kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/canal/rbac.yaml
+    {% elif network | lower == 'calico' %}
+    kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+    kubectl apply -f https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+    {% elif network | lower == 'weave' %}
+    kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+    {% endif %}
+  when: network is defined and success.rc == 0
   become: yes
   become_method: sudo
   become_user: kubernetes
+  run_once: yes
+  delegate_to: "{{master1}}"
   tags:
     - kubeadm-init
 
 - name: 生成加入集群的命令(kubeadm join)
   shell: "kubeadm token create --print-join-command 2>/dev/null"
-  register: result  
+  register: join
+  run_once: yes
+  delegate_to: "{{master1}}"
+  when: result.rc == 0
   tags:
     - kubeadm-init
 
-- name: running set fact
-  set_fact:
-    kubernetes_join_command: "{{ result }}"
-  tags:
-    - kubeadm-init
-
-- name: print fact
-  debug: msg="{{ kubernetes_join_command.stdout }}"
+- name: 输出kubeadm join命令
+  debug: msg="{{ join.stdout }}"
+  run_once: yes
+  delegate_to: "{{master1}}"
+  when: join.stdout != ""
   tags:
     - kubeadm-init

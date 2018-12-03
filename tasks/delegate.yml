@@ -1,8 +1,0 @@
-- name: check delegate to
-  shell: "pwd"
-  register: result
-  args:
-    warn: no
-  delegate_to: 192.168.16.200
-
-- debug: msg="{{ result.stdout }}"

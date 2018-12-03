@@ -1,0 +1,6 @@
+#!/bin/bash
+kubeadm alpha phase certs all --config kubeadm-config.yaml
+kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
+kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
+kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
+systemctl start kubelet

@@ -1,6 +1,12 @@
 #!/bin/bash
 
-CLUSTER_IP={{ vip }}
+CLUSTER_IP={{ vip_cidr|ipaddr('address') }}
+
+ORIGINS=(
+{% for origin in ansible_play_batch %}
+  {{origin}} 
+{% endfor %}
+)
 
 IPS=(
 {% for host in ansible_play_batch %}
@@ -36,18 +42,27 @@ done
 ALL_IPS=(${IPS[@]} ${host_ip[@]}) #所有主机的ip地址
 ALL_HOSTS=(${host_name[@]} ${NAMES[@]})  #所有主机的主机名,可能有些主机无法查找主机名，则主机名是ip地址
 
-# 如果没有指定主机，则第一台被遍历的主机会被执行kubeadm-init
-{%if not master1 %}
-master1=${ALL_HOSTS[0]}
+{% if network | lower == 'flannel' or network | lower == 'canal' %}
+pod_subnet=10.244.0.0/16
+{% elif network | lower == 'calico' %}
+pod_subnet=192.168.0.0/16
 {% else %}
-master1={{master1}}
+pod_subnet=10.244.0.0/16
 {% endif %}
 
 for i in "${!ALL_IPS[@]}"; do
-	if [ ${master1} = ${ALL_HOSTS[$i]} ];then
+	{% if master1 | ipaddr %}
+	master1_ip={{master1}}
+	if [ ${master1_ip} = ${ALL_IPS[$i]} ]; then
+		master1_hostname=${ALL_HOSTS[$i]}
+	{%else%}
+	master1_hostname={{master1}}
+	if [ ${master1_hostname} = ${ALL_HOSTS[$i]} ];then
+		master1_ip=${ALL_IPS[$i]}
+	{% endif %}
 		unset initial_cluster_status
 		INITIAL_CLUSTER=$(
-			echo "${master1}=https://${ALL_IPS[$i]}:2380"
+			echo "${master1_hostname}=https://${master1_ip}:2380"
 		)
 	else
 		initial_cluster_status="initial-cluster-status: existing"
@@ -57,11 +72,10 @@ for i in "${!ALL_IPS[@]}"; do
 			done | xargs | tr ' ' ,
 		  )
 	fi
-
-cat > /tmp/kubeadm-config-${ALL_HOSTS[$i]}.yaml <<EOT
+cat > /tmp/kubeadm-config-${ORIGINS[$i]}.yaml <<EOT
 apiVersion: kubeadm.k8s.io/v1alpha3
 kind: ClusterConfiguration
-kubernetesVersion: {{kubernetes_version | default(stable)}}
+kubernetesVersion: {{version | default('stable')}}
 apiServerCertSANs:
 - "${CLUSTER_IP}"
 controlPlaneEndpoint: "${CLUSTER_IP}:6443"
@@ -82,8 +96,6 @@ peerCertSANs:
   - ${ALL_HOSTS[$i]}
   - ${ALL_IPS[$i]}
 networking:
-  podSubnet: "{{pod_subnet}}"
+  podSubnet: "${pod_subnet}"
 EOT
 done
-
-echo ${tempdir}

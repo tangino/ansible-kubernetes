@@ -1,4 +1,4 @@
 - name: 拉取相关的Docker镜像
-  script: pull_k8s_image.sh {{ kubernetes_version }}
+  script: pull_k8s_image.sh {{ version | default('stable') }}
   tags:
     - pull-images

@@ -1,12 +1,48 @@
-- name: copy certificate to other hosts
+- name: 创建证书存放文件夹
+  file:
+    path: /etc/kubernetes/pki/etcd/
+    state: directory
   tags:
-    - cert
-  local_action: shell if [ "{{ item }}" -neq "{{ master1 }}" ];then \
-                        mkdir -p /etc/kubernetes/pki/etcd/ \
-                        scp root@"{{ master1 }}":/etc/kubernetes/pki/ca.* root@"{{ item }}":/etc/kubernetes/pki/ \
-                        scp root@"{{ master1 }}":/etc/kubernetes/pki/sa.* root@"{{ item }}":/etc/kubernetes/pki/ \
-                        scp root@"{{ master1 }}":/etc/kubernetes/pki/front-proxy-ca.* root@"{{ item }}":/etc/kubernetes/pki/ \
-                        scp root@"{{ master1 }}":/etc/kubernetes/pki/etcd/ca.* root@"{{ item }}":/etc/kubernetes/pki/etcd/ \
-                        scp root@"{{ master1 }}":/etc/kubernetes/pki/admin.conf root@"{{ item }}":/etc/kubernetes/pki/
-                     fi
-  loop: "{{ ansible_play_batch }}"
+    - add-master
+
+- name: 创建临时文件
+  raw: |
+    mkdir -p /tmp/k8s_tmp/kubernetes/pki/etcd/
+    cp /etc/kubernetes/pki/ca.* /tmp/k8s_tmp/kubernetes/pki/
+    cp /etc/kubernetes/pki/sa.* /tmp/k8s_tmp/kubernetes/pki/
+    cp /etc/kubernetes/pki/front-proxy-ca.* /tmp/k8s_tmp/kubernetes/pki/
+    cp /etc/kubernetes/pki/etcd/ca.* /tmp/k8s_tmp/kubernetes/pki/etcd/
+    cp /etc/kubernetes/admin.conf /tmp/k8s_tmp/kubernetes/admin.conf
+  run_once: yes
+  register: res
+  delegate_to: "{{master1}}"
+  tags:
+    - add-master
+
+- name: 拉取临时文件到本地主机
+  fetch:
+    src: "{{item}}"
+    dest: /tmp/k8s_tmp/
+  loop:
+    - /etc/kubernetes/pki/ca.crt
+    - /etc/kubernetes/pki/ca.key
+    - /etc/kubernetes/pki/sa.key
+    - /etc/kubernetes/pki/sa.pub
+    - /etc/kubernetes/pki/front-proxy-ca.crt
+    - /etc/kubernetes/pki/front-proxy-ca.key
+    - /etc/kubernetes/pki/etcd/ca.crt
+    - /etc/kubernetes/pki/etcd/ca.key
+    - /etc/kubernetes/admin.conf
+  when: res is defined and res.rc == 0
+  run_once: yes
+  tags:
+    - add-master
+
+- name: 复制证书到其他节点
+  copy:
+    src: /tmp/k8s_tmp/{{master1}}/etc/kubernetes/
+    dest: /etc/kubernetes/
+  when: ansible_play_batch | length > 1
+  tags:
+    - add-master
+    - certs
