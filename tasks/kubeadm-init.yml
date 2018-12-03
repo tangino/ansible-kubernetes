@@ -19,7 +19,6 @@
     src: /tmp/kubeadm-config-{{item}}.yaml
     dest: /tmp/kubeadm-config-{{item}}.yaml
   loop: "{{ansible_play_batch}}"
-  delegate_to: localhost
   run_once: yes
   tags:
     - kubeadm-init

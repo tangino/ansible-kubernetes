@@ -15,6 +15,27 @@
     network: "{{ network | default('Flannel')}}"
     version: "{{ version | default('stable') }}"
 
+- name: 获取ip地址和主机列表
+  raw: |
+    host_list=$(ansible master,ubuntu-server -m setup | grep -A 1 -w -E "ansible_hostname|ansible_default_ipv4" | egrep "ansible_hostname|address" | awk '{FS=":"; print $2}' | tr \" " " | xargs | tr , " ")
+        echo ${host_list}
+  connection: local
+  run_once: yes
+  register: host_ip_array
+  tags:
+    - get-hosts
+
+- name: 设置自定义fact
+  set_fact:
+    host_ips: "{{host_ip_array.stdout_lines[0]}}"
+  tags:
+    - set-hosts
+
+- name: debug
+  debug: msg={{host_ips}}
+  tags:
+    - debug
+
 - name: 配置系统
   import_tasks: configurate-system.yml
 
