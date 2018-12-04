@@ -13,7 +13,7 @@
     - kubeadm-init
 
 - name: 执行kubeadm init命令
-  shell: kubeadm init --config /tmp/kubeadm-config-{{master1}}.yaml --ignore-preflight-errors=all
+  shell: kubeadm init --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml --ignore-preflight-errors=all
   run_once: yes
   delegate_to: "{{master1}}"
   register: result

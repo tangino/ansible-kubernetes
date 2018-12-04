@@ -15,7 +15,6 @@
     cp /etc/kubernetes/admin.conf /tmp/k8s_tmp/kubernetes/admin.conf
   run_once: yes
   register: res
-  delegate_to: "{{master1}}"
   tags:
     - add-master
 

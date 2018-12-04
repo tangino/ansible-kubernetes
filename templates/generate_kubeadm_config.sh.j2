@@ -50,9 +50,9 @@ INITIAL_CLUSTER=$(
   )
 {% endif %}
 
-filename=/tmp/kubeadm-config-{{ansible_hostname}}.yaml
+clusterfilename=/tmp/kubeadm-config-{{ansible_hostname}}.yaml
 
-cat > ${filename} <<EOT
+cat > ${clusterfilename} <<EOT
 apiVersion: kubeadm.k8s.io/v1alpha3
 kind: ClusterConfiguration
 kubernetesVersion: {{version | default('stable')}}
@@ -79,6 +79,35 @@ networking:
   podSubnet: "${pod_subnet}"
 EOT
 
-{% if is master %}
-sed -i '/^[[:space:]]*$/d' ${filename}
+
+{% if ismaster %}
+sed -i '/^[[:space:]]*$/d' ${clusterfilename}
+{% else %}
+initfilename=/tmp/kubeadm-config-{{ansible_hostname}}-init.yaml
+cat > ${initfilename} <<EOT
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: InitConfiguration
+kubernetesVersion: {{version | default('stable')}}
+apiServerCertSANs:
+- "${CLUSTER_IP}"
+controlPlaneEndpoint: "${CLUSTER_IP}:6443"
+etcd:
+  local:
+    extraArgs:
+      name: "{{ansible_hostname}}"
+      listen-client-urls: "https://127.0.0.1:2379,https://${current_ip}:2379"
+      advertise-client-urls: "https://${current_ip}:2379"
+      listen-peer-urls: "https://${current_ip}:2380"
+      initial-advertise-peer-urls: "https://${current_ip}:2380"
+      initial-cluster: "${INITIAL_CLUSTER}"
+      ${initial_cluster_status}
+serverCertSANs:
+  - {{ansible_hostname}}
+  - ${current_ip}
+peerCertSANs:
+  - {{ansible_hostname}}
+  - ${current_ip}
+networking:
+  podSubnet: "${pod_subnet}"
+EOT
 {% endif %}

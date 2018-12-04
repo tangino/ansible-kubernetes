@@ -62,7 +62,13 @@
   import_tasks: kubeadm-init.yml
 
 - name: 添加master节点
-  import_tasks: add-master.yml
+  import_tasks: copy-certs.yml
 
-- name: 添加node节点
-  import_tasks: kubeadm-join.yml
+  #- name: 配置kubelet
+  #  import_tasks: config-kubelet.yml
+  #
+  #- name: 配置etcd
+  #  import_tasks: config-etcd.yml
+  #
+  #- name: 添加node节点
+  #  import_tasks: kubeadm-join.yml

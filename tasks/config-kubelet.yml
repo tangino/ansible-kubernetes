@@ -1,3 +1,16 @@
 - name: 配置kubelet
-  shell: /tmp/config/kubelet.sh
+  raw: |
+    kubeadm alpha phase certs all --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    kubeadm alpha phase kubelet config write-to-disk --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    kubeadm alpha phase kubelet write-env-file --config /tmp/kubeadm-config-{{ansible_hostname}}-init.yaml
+    kubeadm alpha phase kubeconfig kubelet --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+  tags:
+    - config-kubelet
+
+- name: 启动kubelet
+  systemd:
+    name: kubelet
+    state: started
+  tags:
+    - config-kubelet
 

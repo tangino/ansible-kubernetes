@@ -1,0 +1,37 @@
+- name: 配置etcd
+  raw: |
+    host_arr=({{host_and_ips}})
+    for i in ${!host_arr[@]};do
+      if [ {{master1 | ipaddr }} = ${host_arr[$i]} ]; then
+        master1_ip={{ master1 }}
+        master1_hostname=${host_arr[$(($i+1))]}
+      else
+        master1_hostname={{master1}}
+        master1_ip=${host_arr[$(($i-1))]}
+      fi
+    done
+
+    echo ${master1_ip} >> /tmp/master1.txt
+    echo ${master1_hostname} >> /tmp/master1.txt
+
+    kubeadm alpha phase etcd local --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    export KUBECONFIG=/etc/kubernetes/admin.conf
+    kubeadm alpha phase etcd local --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+
+    kubectl exec -n kube-system etcd-${master1_hostname} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${master1_ip}:2379 member add {{ansible_hostname}} https://{{ansible_default_ipv4.address}}:2380
+  args:
+    executable: /bin/bash
+  tags:
+    - config-etcd
+
+- name: 设置节点为master
+  shell: |
+    kubeadm alpha phase kubeconfig all --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    kubeadm alpha phase controlplane all --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    kubeadm alpha phase kubelet config annotate-cri --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+    kubeadm alpha phase mark-master --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+  args:
+    executable: /bin/bash
+  tags:
+    - config-master
+
