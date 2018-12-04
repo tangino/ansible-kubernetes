@@ -2,45 +2,15 @@
 
 CLUSTER_IP={{ vip_cidr|ipaddr('address') }}
 
-ORIGINS=(
-{% for origin in ansible_play_batch %}
-  {{origin}} 
-{% endfor %}
-)
+host_arr=({{host_and_ips}})
 
-IPS=(
-{% for host in ansible_play_batch %}
-	{% if host | ipaddr %}
-  {{host}} 
-	{% endif %}
-{% endfor %}
-)
+declare -A host_dict
 
-for i in ${!IPS[@]}; do
-	res=$(host ${IPS[$i]})
-	if [ "${res}" != 0 ];then #无法通过ip地址取得主机名,则以ip作为主机名
-		host_name[$i]=${IPS[$i]}
-	else   # 获取主机名
-		host_name[$i]=$(host ${IPS[$i]} | sed '2d' | awk '{FS=" "; print $NF}' | tr . " ")
-	fi
+for ((i=0;i<{{ansible_play_batch|length}}; i++));do
+	key=${host_arr[$(($i*2))]}
+	value=${host_arr[$(($i*2+1))]}
+	host_dict[${key}]=${value}
 done
-
-NAMES=(
-{% for host in ansible_play_batch %}
-	{% if not host | ipaddr %}
-  {{host}} 
-	{% endif %}
-{% endfor %}
-)
-
-for i in ${!NAMES[@]}; do
-		# 解析主机名对应的ip地址
-	host_ip[$i]=$(ping -4n -c 1 ${NAMES[$i]} | sed -n '2p' | awk '{FS=" "; print $4}' | tr : " ")
-done
-
-
-ALL_IPS=(${IPS[@]} ${host_ip[@]}) #所有主机的ip地址
-ALL_HOSTS=(${host_name[@]} ${NAMES[@]})  #所有主机的主机名,可能有些主机无法查找主机名，则主机名是ip地址
 
 {% if network | lower == 'flannel' or network | lower == 'canal' %}
 pod_subnet=10.244.0.0/16
@@ -50,29 +20,39 @@ pod_subnet=192.168.0.0/16
 pod_subnet=10.244.0.0/16
 {% endif %}
 
-for i in "${!ALL_IPS[@]}"; do
-	{% if master1 | ipaddr %}
-	master1_ip={{master1}}
-	if [ ${master1_ip} = ${ALL_IPS[$i]} ]; then
-		master1_hostname=${ALL_HOSTS[$i]}
-	{%else%}
-	master1_hostname={{master1}}
-	if [ ${master1_hostname} = ${ALL_HOSTS[$i]} ];then
-		master1_ip=${ALL_IPS[$i]}
+current_ip={{ansible_default_ipv4.address}}
+
+
+{% if master1 | ipaddr %}
+	{% if ansible_default_ipv4.address == master1 %}
+		{% set ismaster = true %}
+	{% else %}
+		{% set ismaster = false %}
 	{% endif %}
-		unset initial_cluster_status
-		INITIAL_CLUSTER=$(
-			echo "${master1_hostname}=https://${master1_ip}:2380"
-		)
-	else
-		initial_cluster_status="initial-cluster-status: existing"
-		INITIAL_CLUSTER=$(
-			for j in "${!ALL_HOSTS[@]}"; do
-			  echo "${ALL_HOSTS[$j]}=https://${ALL_IPS[$j]}:2380"
-			done | xargs | tr ' ' ,
-		  )
-	fi
-cat > /tmp/kubeadm-config-${ORIGINS[$i]}.yaml <<EOT
+{% else %}
+	{% if ansible_hostname == master1 %}
+		{% set ismaster = true %}
+	{% else %}
+		{% set ismaster = false %}
+	{% endif %}
+{% endif %}
+
+{% if ismaster %}
+INITIAL_CLUSTER=$(
+	echo "${host_dict[${current_ip}]}=https://${current_ip}:2380"
+)
+{% else %}
+initial_cluster_status="initial-cluster-status: existing"
+INITIAL_CLUSTER=$(
+	for key in "${!host_dict[@]}"; do
+	  echo "${host_dict[$key]}=https://${key}:2380"
+	done | xargs | tr ' ' ,
+  )
+{% endif %}
+
+filename=/tmp/kubeadm-config-{{ansible_hostname}}.yaml
+
+cat > ${filename} <<EOT
 apiVersion: kubeadm.k8s.io/v1alpha3
 kind: ClusterConfiguration
 kubernetesVersion: {{version | default('stable')}}
@@ -82,20 +62,23 @@ controlPlaneEndpoint: "${CLUSTER_IP}:6443"
 etcd:
   local:
     extraArgs:
-      name: "${ALL_HOSTS[$i]}"
-      listen-client-urls: "https://127.0.0.1:2379,https://${ALL_IPS[$i]}:2379"
-      advertise-client-urls: "https://${ALL_IPS[$i]}:2379"
-      listen-peer-urls: "https://${ALL_IPS[$i]}:2380"
-      initial-advertise-peer-urls: "https://${ALL_IPS[$i]}:2380"
+      name: "{{ansible_hostname}}"
+      listen-client-urls: "https://127.0.0.1:2379,https://${current_ip}:2379"
+      advertise-client-urls: "https://${current_ip}:2379"
+      listen-peer-urls: "https://${current_ip}:2380"
+      initial-advertise-peer-urls: "https://${current_ip}:2380"
       initial-cluster: "${INITIAL_CLUSTER}"
       ${initial_cluster_status}
 serverCertSANs:
-  - ${ALL_HOSTS[$i]}
-  - ${ALL_IPS[$i]}
+  - {{ansible_hostname}}
+  - ${current_ip}
 peerCertSANs:
-  - ${ALL_HOSTS[$i]}
-  - ${ALL_IPS[$i]}
+  - {{ansible_hostname}}
+  - ${current_ip}
 networking:
   podSubnet: "${pod_subnet}"
 EOT
-done
+
+{% if is master %}
+sed -i '/^[[:space:]]*$/d' ${filename}
+{% endif %}

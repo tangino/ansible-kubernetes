@@ -15,9 +15,9 @@
     network: "{{ network | default('Flannel')}}"
     version: "{{ version | default('1.12.0') }}"
 
-- name: 获取ip地址和主机列表
+- name: 解析主机名和ip地址
   raw: |
-    host_ips=$(ansible master -m setup | grep -A 1 -w -E "ansible_hostname|ansible_default_ipv4" | egrep "ansible_hostname|address" | awk '{FS=":"; print $2}' | xargs | tr , " ")
+    host_ips=$(ansible {{ansible_play_batch|join(',')}} -m setup | grep -A 1 -w -E "ansible_hostname|ansible_default_ipv4" | egrep "ansible_hostname|address" | awk '{FS=":"; print $2}' | xargs | tr , " ")
     echo ${host_ips}
   args:
     executable: /bin/bash
@@ -33,11 +33,6 @@
   tags:
     - set-hosts
     
-- name: debug
-  debug: msg={{host_and_ips}}
-  tags:
-    - debug
-
 - name: 配置系统
   import_tasks: configurate-system.yml
 

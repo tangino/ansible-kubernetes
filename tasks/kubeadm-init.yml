@@ -2,25 +2,14 @@
   template:
     src: generate_kubeadm_config.sh.j2
     dest: /tmp/generate_kubeadm_config.sh
-  delegate_to: localhost
   tags:
     - prepare-config
     - kubeadm-init
 
 - name: 创建kubeadm集群配置文件
   shell: /bin/bash /tmp/generate_kubeadm_config.sh
-  delegate_to: localhost
   tags:
     - create-config
-    - kubeadm-init
-
-- name: 复制配置文件到远程主机
-  copy:
-    src: /tmp/kubeadm-config-{{item}}.yaml
-    dest: /tmp/kubeadm-config-{{item}}.yaml
-  loop: "{{ansible_play_batch}}"
-  run_once: yes
-  tags:
     - kubeadm-init
 
 - name: 执行kubeadm init命令
