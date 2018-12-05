@@ -13,9 +13,9 @@
     - kubeadm-init
 
 - name: 执行kubeadm init命令
-  shell: kubeadm init --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml --ignore-preflight-errors=all
+  shell: kubeadm init --config /tmp/kubeadm-config-{{init_hostname}}.yaml --ignore-preflight-errors=all
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   register: result
   tags:
     - kubeadm-init
@@ -25,7 +25,7 @@
     name: kubernetes
     state: present
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   when: result.rc == 0
   tags:
     - kubeadm-init
@@ -36,7 +36,7 @@
   args:
     warn: no
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   register: success
   when: result.rc == 0
   tags:
@@ -49,7 +49,7 @@
     dest: /home/kubernetes/.kube/config
     owner: kubernetes
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   when: success.rc == 0
   tags:
     - kubeadm-init
@@ -72,7 +72,7 @@
   become_method: sudo
   become_user: kubernetes
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   tags:
     - kubeadm-init
 
@@ -80,7 +80,7 @@
   shell: "kubeadm token create --print-join-command 2>/dev/null"
   register: join
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   when: result.rc == 0
   tags:
     - kubeadm-init
@@ -88,7 +88,7 @@
 - name: 输出kubeadm join命令
   debug: msg="{{ join.stdout }}"
   run_once: yes
-  delegate_to: "{{master1}}"
+  delegate_to: "{{init}}"
   when: join.stdout != ""
   tags:
     - kubeadm-init

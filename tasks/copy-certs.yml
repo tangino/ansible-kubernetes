@@ -39,7 +39,7 @@
 
 - name: 复制证书到其他节点
   copy:
-    src: /tmp/k8s_tmp/{{master1}}/etc/kubernetes/
+    src: /tmp/k8s_tmp/{{init}}/etc/kubernetes/
     dest: /etc/kubernetes/
   when: ansible_play_batch | length > 1
   tags:

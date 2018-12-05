@@ -2,16 +2,6 @@
 
 CLUSTER_IP={{ vip_cidr|ipaddr('address') }}
 
-host_arr=({{host_and_ips}})
-
-declare -A host_dict
-
-for ((i=0;i<{{ansible_play_batch|length}}; i++));do
-	key=${host_arr[$(($i*2))]}
-	value=${host_arr[$(($i*2+1))]}
-	host_dict[${key}]=${value}
-done
-
 {% if network | lower == 'flannel' or network | lower == 'canal' %}
 pod_subnet=10.244.0.0/16
 {% elif network | lower == 'calico' %}
@@ -22,30 +12,18 @@ pod_subnet=10.244.0.0/16
 
 current_ip={{ansible_default_ipv4.address}}
 
-
-{% if master1 | ipaddr %}
-	{% if ansible_default_ipv4.address == master1 %}
-		{% set ismaster = true %}
-	{% else %}
-		{% set ismaster = false %}
-	{% endif %}
-{% else %}
-	{% if ansible_hostname == master1 %}
-		{% set ismaster = true %}
-	{% else %}
-		{% set ismaster = false %}
-	{% endif %}
-{% endif %}
-
-{% if ismaster %}
+{% if init_ip == ansible_default_ipv4.address %}
 INITIAL_CLUSTER=$(
 	echo "${host_dict[${current_ip}]}=https://${current_ip}:2380"
 )
 {% else %}
+
+arr=({{host_and_ips}})
+
 initial_cluster_status="initial-cluster-status: existing"
 INITIAL_CLUSTER=$(
-	for key in "${!host_dict[@]}"; do
-	  echo "${host_dict[$key]}=https://${key}:2380"
+	for ((i=0; i<{{ansible_play_batch}}; i++));do
+		echo "${arr[$((i+1))]}=https://${arr[$i]}:2380"
 	done | xargs | tr ' ' ,
   )
 {% endif %}
@@ -80,7 +58,7 @@ networking:
 EOT
 
 
-{% if ismaster %}
+{% if init_ip == ansible_default_ipv4.address %}
 sed -i '/^[[:space:]]*$/d' ${clusterfilename}
 {% else %}
 initfilename=/tmp/kubeadm-config-{{ansible_hostname}}-init.yaml

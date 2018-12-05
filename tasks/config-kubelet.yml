@@ -4,6 +4,7 @@
     kubeadm alpha phase kubelet config write-to-disk --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
     kubeadm alpha phase kubelet write-env-file --config /tmp/kubeadm-config-{{ansible_hostname}}-init.yaml
     kubeadm alpha phase kubeconfig kubelet --config /tmp/kubeadm-config-{{ansible_hostname}}.yaml
+  when: ansible_hostname != init_hostname
   tags:
     - config-kubelet
 

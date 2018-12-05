@@ -11,9 +11,12 @@
 
 - name: 定义变量
   set_fact:
-    master1: "{{ master1 | default(ansible_play_batch[0]) }}"
+    init: "{{ init | default(ansible_play_batch[0]) }}"
     network: "{{ network | default('Flannel')}}"
     version: "{{ version | default('1.12.0') }}"
+  tags:
+    - set-vars
+    - debug-var
 
 - name: 解析主机名和ip地址
   raw: |
@@ -26,12 +29,64 @@
   register: host_ips
   tags:
     - get-hosts
+    - debug-var
 
 - name: 设置自定义fact
   set_fact:
     host_and_ips: "{{host_ips.stdout_lines[0]}}"
   tags:
     - set-hosts
+    - debug-var
+
+- debug: msg=init={{init}}
+  tags:
+    - debug-var
+
+- name: 计算执行kubeadm init的主机名或IP
+  raw: |
+    arr=({{host_and_ips}})
+    if echo {{host_and_ips}} | grep -i {{init}} >/dev/null;then
+      for i in ${!arr[@]};do
+        if [ {{init}} = ${arr[$i]} ] && [ $(($i%2)) = 0 ]; then 
+          init_ip=${arr[$i]}
+          init_hostname=${arr[$(($i+1))]}
+          init_host=(${init_ip} ${init_hostname})
+          break
+        elif [ {{init}} = ${arr[$i]} ] && [ $(($i%2)) != 0 ]; then
+          init_ip=${arr[$(($i-1))]}
+          init_hostname=${arr[$i]}
+          init_host=(${init_ip} ${init_hostname})
+          break
+        fi
+      done
+      echo ${init_host[@]}
+    else
+      >&2 echo "init：ip或主机名不是有效的值"
+      exit 1
+    fi
+  args:
+    executable: /bin/bash
+  run_once: yes
+  register: init_host
+  tags:
+    - calc
+    - debug-var
+
+- debug: msg=init_host={{init_host}}
+  tags:
+    - debug-var
+
+- name: 记录init主机名和IP到fact
+  set_fact:
+    init_ip: "{{init_host.stdout_lines[0].split(' ')[0]}}"
+    init_hostname: "{{init_host.stdout_lines[0].split(' ')[1]}}"
+  tags:
+    - rec-init
+    - debug-var
+
+- debug: msg="ip={{init_ip}} hostname={{init_hostname}}"
+  tags:
+    - debug-var
     
 - name: 配置系统
   import_tasks: configurate-system.yml
@@ -61,9 +116,9 @@
 - name: 执行kubeadm init命令
   import_tasks: kubeadm-init.yml
 
-- name: 添加master节点
-  import_tasks: copy-certs.yml
-
+  #- name: 添加master节点
+  #  import_tasks: copy-certs.yml
+  #
   #- name: 配置kubelet
   #  import_tasks: config-kubelet.yml
   #
